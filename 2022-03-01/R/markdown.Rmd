@@ -1,0 +1,78 @@
+---
+title: "Alternative fuel stations"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(leaflet)
+library(dplyr)
+library(forcats)
+library(ggplot2)
+setwd('..')
+
+data <- read.csv('data/stations.csv') |> 
+          left_join(read.csv('data/fuel_type.csv'), by = 'FUEL_TYPE_CODE')
+
+theme_set(theme_bw())
+
+
+### Function data graph
+data_graph <- function(x){
+data |> filter(Description == x) |> select(X, Y, STATION_NAME, STREET_ADDRESS, CITY, STATE, STATION_PHONE)
+}
+```
+
+Summary
+======================================================================
+
+Row {data-width = 900}
+-----------------------------------------------------------------------
+
+### Number of Stations by Fuel Type
+
+```{r}
+data |> group_by(Description, COUNTRY) |> summarise(n = n()) |> 
+  ungroup() |> 
+  mutate(Description = forcats::fct_reorder(.f =  Description, desc(n))) |> 
+  ggplot(aes(y = n, x= Description))+
+  geom_bar(stat = 'identity')+
+  geom_label(aes(label = n), vjust = -.1)+
+  labs(y = 'Number of stations', x = 'Fuel Type')+
+  ylim(0, 52000)
+  
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+data |> group_by(Description, COUNTRY, STATE) |> summarise(n = n()) |> 
+  left_join(data |> group_by(STATE) |> summarise(total_state = n()), by = 'STATE') |> 
+  # left_join(data |> group_by(Description) |> summarise(total_description = n()), by = 'Description') |> 
+  mutate(STATE = forcats::fct_reorder(.f =  as.factor(STATE), desc(total_state))) |> 
+  # mutate(Description = forcats::fct_reorder(.f =  Description, desc(total_description))) |> 
+  ggplot(aes(x = n, y = STATE, fill = factor(Description, levels = c('Electric', 'Ethanol', 'Propane', 'Compressed Natural Gas', 'Biodiesel', 'Liquefied Natural Gas', 'Hydrogen'))))+
+  geom_bar(stat = 'identity')+
+  labs(y = 'State', x = 'Number of stations', fill = 'Fuel_type')
+
+```
+
+Electric
+===========================================================================
+
+Row
+------------------------------------------------------------------------
+```{r}
+data_g <- data_graph('Electric')
+
+leaflet(data_g) |> addTiles() |> addMarkers(lng = data_g$X,lat=data_g$Y)
+
+```
+
+
