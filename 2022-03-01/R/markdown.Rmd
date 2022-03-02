@@ -1,9 +1,10 @@
 ---
-title: "Alternative fuel stations"
+title: "Alternative fuel stations - US"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
-    vertical_layout: fill
+    vertical_layout: scroll
+    
 ---
 
 ```{r setup, include=FALSE}
@@ -12,6 +13,7 @@ library(leaflet)
 library(dplyr)
 library(forcats)
 library(ggplot2)
+library(plotly)
 setwd('..')
 
 data <- read.csv('data/stations.csv') |> 
@@ -21,58 +23,120 @@ theme_set(theme_bw())
 
 
 ### Function data graph
-data_graph <- function(x){
-data |> filter(Description == x) |> select(X, Y, STATION_NAME, STREET_ADDRESS, CITY, STATE, STATION_PHONE)
+make_graph <- function(x){
+data_g <- data |> filter(Description == x) |> select(X, Y, STATION_NAME, 
+                                                     STREET_ADDRESS, CITY, 
+                                                     STATE, STATION_PHONE) %>% 
+   distinct()
+  labels <-paste0('<strong>Name: </strong>',data_g$STATION_NAME,
+                 '<br><strong>Address:</strong>', 
+                paste0(data_g$STREET_ADDRESS, '-',
+                       data_g$CITY, ' ', data_g$STATE),
+                 '<br><strong>Phone:</strong>', data_g$STATION_PHONE) 
+
+  pts <- sf::st_as_sf(data_g, coords = c('X', 'Y'), crs = 4326)
+  leaflet(data_g) |> addTiles() %>%  leafgl::addGlPoints(radius = 10, pts, popup =  labels)
 }
+
+## Function graph
+
 ```
 
 Summary
 ======================================================================
 
-Row {data-width = 900}
+Row {data-height=600}
 -----------------------------------------------------------------------
 
 ### Number of Stations by Fuel Type
 
 ```{r}
-data |> group_by(Description, COUNTRY) |> summarise(n = n()) |> 
+plotly::ggplotly(data |> group_by(Description, COUNTRY) |> summarise(n = n()) |> 
   ungroup() |> 
   mutate(Description = forcats::fct_reorder(.f =  Description, desc(n))) |> 
   ggplot(aes(y = n, x= Description))+
   geom_bar(stat = 'identity')+
-  geom_label(aes(label = n), vjust = -.1)+
   labs(y = 'Number of stations', x = 'Fuel Type')+
-  ylim(0, 52000)
+  ylim(0, 52000)+
+  theme(axis.text.x = element_text(angle = 15))  
+  ) %>% layout(xaxis=list(fixedrange=TRUE)) %>% 
+  layout(yaxis=list(fixedrange=TRUE))
   
 ```
-
 Row
 -----------------------------------------------------------------------
 
-### Chart B
+### Number of Station by State  {data-height=1000}
 
 ```{r}
-data |> group_by(Description, COUNTRY, STATE) |> summarise(n = n()) |> 
+plotly::ggplotly(data |> group_by(Description, COUNTRY, STATE) |> summarise(n = n()) |> 
   left_join(data |> group_by(STATE) |> summarise(total_state = n()), by = 'STATE') |> 
-  # left_join(data |> group_by(Description) |> summarise(total_description = n()), by = 'Description') |> 
-  mutate(STATE = forcats::fct_reorder(.f =  as.factor(STATE), desc(total_state))) |> 
-  # mutate(Description = forcats::fct_reorder(.f =  Description, desc(total_description))) |> 
-  ggplot(aes(x = n, y = STATE, fill = factor(Description, levels = c('Electric', 'Ethanol', 'Propane', 'Compressed Natural Gas', 'Biodiesel', 'Liquefied Natural Gas', 'Hydrogen'))))+
+  ungroup() %>% 
+  mutate(STATE = forcats::fct_reorder(.f =  as.factor(STATE), total_state)) |> 
+  mutate(Description = factor(Description, levels = c('Electric', 'Ethanol', 'Propane', 
+                                                      'Compressed Natural Gas', 'Biodiesel', 
+                                                      'Liquefied Natural Gas', 'Hydrogen'))) %>% 
+  ggplot(aes(x = n, y = STATE, fill = Description ))+
   geom_bar(stat = 'identity')+
-  labs(y = 'State', x = 'Number of stations', fill = 'Fuel_type')
+  labs(y = 'State', x = 'Number of stations', fill = 'Fuel Type')) %>% 
+  config(displayModeBar = F) %>% layout(xaxis=list(fixedrange=TRUE)) %>% 
+  layout(yaxis=list(fixedrange=TRUE))
 
 ```
 
 Electric
 ===========================================================================
 
-Row
-------------------------------------------------------------------------
-```{r}
-data_g <- data_graph('Electric')
-
-leaflet(data_g) |> addTiles() |> addMarkers(lng = data_g$X,lat=data_g$Y)
-
+### Electric {data-height=900}
+```{r out.width='100%'}
+make_graph('Electric')
 ```
 
+Ethanol
+==========================================================================
+
+### Ethanol {data-height=900}
+```{r out.width='100%'}
+make_graph('Ethanol')
+```
+
+Propane
+==========================================================================
+
+### Propane {data-height=900}
+```{r out.width='100%'}
+make_graph('Propane')
+```
+
+Compressed Natural Gas
+==========================================================================
+
+### Compressed Natural Gas {data-height=900}
+```{r out.width='100%'}
+make_graph('Compressed Natural Gas')
+```
+
+Biodiesel
+==========================================================================
+
+### Biodiesel {data-height=900}
+```{r out.width='100%'}
+make_graph('Biodiesel')
+```
+
+Liquefied Natural Gas
+==========================================================================
+
+### Liquefied Natural Gas {data-height=900}
+```{r out.width='100%'}
+make_graph('Liquefied Natural Gas')
+```
+
+Hydrogen
+==========================================================================
+
+### Hydrogen {data-height=900}
+```{r out.width='100%', out.height='100%'}
+make_graph('Hydrogen')
+```
 

@@ -19,7 +19,7 @@ showtext_auto()
 
 
 ggplot(data) +
-    geom_sf(aes(geometry = geometry, fill = factor(Population, levels = levels)))+
+    geom_sf(aes(geometry = geometry, fill = factor(Population, levels = levels)), color = 'black')+
     scale_fill_manual(values = colors) +
     labs(title = stringr::str_wrap('RELATIVE NEGRO POPULATION OF THE STATES OF THE UNITED STATES',46),
         fill = '')+
